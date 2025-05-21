@@ -1,4 +1,9 @@
-window.gameMap = {};
+// Overworld Map for Peake RPG
+// This file defines the outside world (wilderness, fields, etc.)
+// Towns, shops, and other structures you can enter are defined separately in rooms/rooms.js
+
+const MAP_WIDTH = 10;
+const MAP_HEIGHT = 10;
 
 const descriptions = [
   "A crumbling watchtower looms here, its top barely standing.",
@@ -110,10 +115,23 @@ const descriptions = [
   "This place feels... too still.",
 ];
 
+// Build the overworld map as an object keyed by 'x,y'
+const gameMap = {};
 let index = 0;
-for (let y = 0; y < 10; y++) {
-  for (let x = 0; x < 10; x++) {
+for (let y = 0; y < MAP_HEIGHT; y++) {
+  for (let x = 0; x < MAP_WIDTH; x++) {
     const key = `${x},${y}`;
-    window.gameMap[key] = descriptions[index++];
+    // Use descriptions in order, repeat last if we run out
+    gameMap[key] = descriptions[index] || descriptions[descriptions.length - 1];
+    index++;
   }
 }
+
+// Expose gameMap globally for use in game logic
+window.gameMap = gameMap;
+
+// Utility: check if a location is in the overworld
+window.isOverworldLocation = function(loc) {
+  // Overworld locations are in the form 'x,y' where x and y are numbers
+  return /^\d+,\d+$/.test(loc);
+};

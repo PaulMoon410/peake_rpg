@@ -5,25 +5,29 @@
   <title>Peake RPG</title>
   <style>
     body { font-family: monospace; background: #111; color: #eee; padding: 20px; }
-    #output { white-space: pre-wrap; margin-bottom: 20px; }
     button { margin: 5px; }
+    #console { white-space: pre-wrap; margin-bottom: 0; background:#222; padding:10px; height:200px; overflow-y:auto; border:1px solid #444; }
+    #consoleInputWrapper { display: flex; background: #222; border: 1px solid #444; border-top: none; }
+    #consoleInput { flex: 1; background: #222; color: #eee; border: none; padding: 10px; font-family: monospace; font-size: 1em; outline: none; }
+    #consoleInputBtn { background: #333; color: #eee; border: none; padding: 10px 16px; cursor: pointer; font-family: monospace; }
+    #consoleInputBtn:hover { background: #444; }
+    #mapContainer { margin-top: 20px; }
+    #gameMapDisplay { width: 100%; height: 400px; background: #222; border: 1px solid #444; }
   </style>
 </head>
 <body>
 
   <h1>Peake RPG</h1>
-  <div id="output">Thanks for playing!</div>
   <h3>Game Console</h3>
-  <div id="console" style="background:#222; padding:10px; height:150px; overflow-y:auto; border:1px solid #444; margin-bottom: 20px;"></div>
-  
-  <div>
-    <button onclick="move('n')">North</button>
-    <button onclick="move('s')">South</button>
-    <button onclick="move('e')">East</button>
-    <button onclick="move('w')">West</button>
-    <button onclick="enter()">Enter</button>
-    <button onclick="exitRoom()">Exit</button>
+  <div id="console"></div>
+  <div id="consoleInputWrapper">
+    <input type="text" id="consoleInput" placeholder="Type command (e.g., n, s, e, w, enter, exit)..." autocomplete="off">
+    <button id="consoleInputBtn">Execute</button>
+  </div>
 
+  <div id="mapContainer">
+    <h3>Map</h3>
+    <div id="gameMapDisplay"></div>
   </div>
 
   <h3>Character</h3>
@@ -38,22 +42,46 @@
   <input type="text" id="loadInput" placeholder="Paste save code" style="width: 300px;">
   <button onclick="loadGame()">Load</button>
 
-  <h3>Command</h3>
-  <input type="text" id="commandInput" placeholder="Type command..." onkeydown="if(event.key==='Enter') handleCommand()">
-  <button onclick="handleCommand()">Execute</button>
-
   <div id="shop"></div>
 
+<!-- Hive Keychain (correct CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@hiveio/keychain/dist/keychain.min.js"></script>
 <!-- Load scripts in correct order with defer -->
 <script src="maps.js" defer></script>
-<script src="/rooms/rooms.js" defer></script>
+<script src="rooms/spawn_point.js" defer></script>
+<script src="rooms/rooms.js" defer></script>
 <script src="characters.js" defer></script>
-<script src="shop_items.js" defer></script>
-<script src="town_start.js" defer></script>
-<script src="shop.js" defer></script>
-<script src="games.js" defer></script>
-
-
+<script src="shops/shop_items.js" defer></script>
+<script src="rooms/town_start.js" defer></script>
+<script src="shops/shop.js" defer></script>
+<script src="game.js" defer></script>
+<script>
+// Attach the new console input to the game logic
+window.addEventListener('DOMContentLoaded', function() {
+  var input = document.getElementById('consoleInput');
+  var btn = document.getElementById('consoleInputBtn');
+  function handleConsoleInput() {
+    if (input.disabled) return;
+    const cmd = input.value.trim();
+    if (cmd) {
+      input.value = '';
+      if (typeof handleCommand === 'function') {
+        // Temporarily set the value for handleCommand to pick up
+        document.getElementById('commandInput') ? document.getElementById('commandInput').value = cmd : null;
+        handleCommand();
+      }
+    }
+  }
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleConsoleInput();
+  });
+  btn.addEventListener('click', handleConsoleInput);
+  // Focus input on load
+  input.focus();
+});
+</script>
+<!-- Hidden legacy input for compatibility -->
+<input type="hidden" id="commandInput">
 
 </body>
 </html>

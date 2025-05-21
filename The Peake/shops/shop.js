@@ -5,6 +5,40 @@ if (typeof hive_keychain === "undefined") {
   document.head.appendChild(script);
 }
 
+// Shop logic for Peake RPG
+// Uses shop_items.js for item definitions and prices
+
+window.shopData = {
+  general: {
+    name: "General Store",
+    items: window.shopItems.filter(item => item.shop === "general")
+  },
+  blacksmith: {
+    name: "Blacksmith",
+    items: window.shopItems.filter(item => item.shop === "blacksmith")
+  },
+  apothecary: {
+    name: "Apothecary",
+    items: window.shopItems.filter(item => item.shop === "apothecary")
+  }
+};
+
+// Get shop by type (e.g., 'general', 'blacksmith', 'apothecary')
+window.getShop = function(type) {
+  return window.shopData[type] || null;
+};
+
+// Show shop inventory and prices
+window.showShop = function(type) {
+  const shop = window.getShop(type);
+  if (!shop) return "Shop not found.";
+  let output = `Welcome to the ${shop.name}!\nItems for sale:`;
+  shop.items.forEach(item => {
+    output += `\n- ${item.name} (${item.price} PeakeCoin)`;
+  });
+  return output;
+};
+
 // Define global displayShop function
 window.displayShop = function(username) {
   const container = document.getElementById("shop");
