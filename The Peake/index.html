@@ -26,8 +26,11 @@
   </div>
 
   <div id="mapContainer">
-    <h3>Map</h3>
-    <div id="gameMapDisplay"></div>
+    <h3>Town Map</h3>
+    <div id="gameMapDisplay" style="position:relative; width:100%; max-width:600px; height:auto; margin:auto;">
+      <img id="townMapImg" src="/attachments/6e2e7b6b-2e2e-4e2e-8e2e-6e2e7b6b2e2e.png" alt="Cruar's Cove Map" style="width:100%;max-width:600px;display:block;margin:auto;border:2px solid #555;background:#fff;">
+      <div id="playerMarker" style="display:none; position:absolute; width:24px; height:24px; background:rgba(0,200,255,0.8); border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px #0ff; pointer-events:none; transform:translate(-50%,-50%); z-index:2;"></div>
+    </div>
   </div>
 
   <h3>Character</h3>
@@ -44,16 +47,13 @@
 
   <div id="shop"></div>
 
-<!-- Hive Keychain (correct CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/@hiveio/keychain/dist/keychain.min.js"></script>
 <!-- Load scripts in correct order with defer -->
 <script src="maps.js" defer></script>
-<script src="rooms/spawn_point.js" defer></script>
-<script src="rooms/rooms.js" defer></script>
+<script src="/rooms/rooms.js" defer></script>
 <script src="characters.js" defer></script>
-<script src="shops/shop_items.js" defer></script>
-<script src="rooms/town_start.js" defer></script>
-<script src="shops/shop.js" defer></script>
+<script src="shop_items.js" defer></script>
+<script src="town_start.js" defer></script>
+<script src="shop.js" defer></script>
 <script src="game.js" defer></script>
 <script>
 // Attach the new console input to the game logic

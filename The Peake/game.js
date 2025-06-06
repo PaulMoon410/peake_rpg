@@ -27,6 +27,23 @@ const backstoryLines = [
   "(Type 'help' for a list of commands.)"
 ];
 
+// Map town coordinates to pixel positions on the Cruar's Cove map image
+const townCoordToPixel = {
+  // Example mappings (tweak as needed for accuracy)
+  // Format: 'x,y': [left, top] (in percent of image width/height)
+  '0,0': [36, 60],      // Village Plaza (center)
+  '0,-1': [36, 50],     // North Road
+  '0,-2': [36, 42],     // Blacksmith's Forge
+  '1,0': [48, 60],      // General Store (right of plaza)
+  '-1,0': [25, 60],     // Village Tavern (left of plaza)
+  '0,1': [36, 70],      // South Lane
+  '1,1': [48, 70],      // Apothecary
+  '-2,0': [15, 60],     // Mayor's House
+  '-1,1': [25, 70],     // Old Woman's Cottage
+  '1,-1': [48, 50],     // Guard Post
+  // Add more as needed
+};
+
 function renderRoom() {
   // Check for spawn room first, then room, then overworld
   let desc = "";
@@ -62,6 +79,7 @@ function renderRoom() {
   }
   setOutput(desc, true);
   renderMap();
+  updateTownMapMarker();
 }
 
 function setOutput(text, showStatsInline = false) {
@@ -100,282 +118,46 @@ function renderInventory() {
 
 function renderMap() {
   const mapDiv = document.getElementById("gameMapDisplay");
-  if (!mapDiv || !window.gameMap) return;
-  let html = '<pre style="font-size:1em;line-height:1.2;">';
-  const MAP_WIDTH = 10;
-  const MAP_HEIGHT = 10;
-  let [px, py] = gameState.location.split(",").map(Number);
+  const townImg = document.getElementById("townMapImg");
+  const marker = document.getElementById("playerMarker");
+  if (!mapDiv) return;
 
-  // Build a lookup for shop locations and types
-  const shopMarkers = {};
-  if (window.roomDetails) {
-    for (const key in window.roomDetails) {
-      const room = window.roomDetails[key];
-      if (room.name && room.name.toLowerCase().includes("shop")) {
-        // Try to extract coordinates from the key (e.g., shop_5_5)
-        const match = key.match(/(\d+)[_,](\d+)/);
-        if (match) {
-          const sx = parseInt(match[1], 10);
-          const sy = parseInt(match[2], 10);
-          // Use first letter of shop type or $ if not found
-          let marker = '$';
-          if (room.name.toLowerCase().includes('supply')) marker = 'S';
-          else if (room.name.toLowerCase().includes('bank')) marker = 'B';
-          else if (room.name.toLowerCase().includes('general')) marker = 'G';
-          else if (room.name.toLowerCase().includes('weapon')) marker = 'W';
-          shopMarkers[`${sx},${sy}`] = marker;
+  // If in town (Cruar's Cove), show the image map and marker
+  if (window.townStart && window.townStart[gameState.location]) {
+    if (townImg) townImg.style.display = 'block';
+    if (marker) marker.style.display = 'block';
+    // Use the global townCoordToPixel mapping
+    const coords = townCoordToPixel[gameState.location];
+    if (coords && townImg && marker) {
+      const w = townImg.offsetWidth;
+      const h = townImg.offsetHeight;
+      marker.style.left = (coords[0] / 100 * w) + 'px';
+      marker.style.top = (coords[1] / 100 * h) + 'px';
+    } else if (marker) {
+      marker.style.display = 'none';
+    }
+    // Hide ASCII map if present
+    if (mapDiv.querySelector('pre')) mapDiv.querySelector('pre').style.display = 'none';
+  } else {
+    // Outside town: hide image and marker, show ASCII map
+    if (townImg) townImg.style.display = 'none';
+    if (marker) marker.style.display = 'none';
+    // Render ASCII map as before
+    let html = '<pre style="font-size:1em;line-height:1.2;">';
+    const MAP_WIDTH = 10;
+    const MAP_HEIGHT = 10;
+    let [px, py] = gameState.location.split(",").map(Number);
+    for (let y = 0; y < MAP_HEIGHT; y++) {
+      for (let x = 0; x < MAP_WIDTH; x++) {
+        if (x === px && y === py) {
+          html += '[X]';
+        } else {
+          html += '[ ]';
         }
       }
+      html += '\n';
     }
+    html += '</pre>';
+    mapDiv.innerHTML = html;
   }
-
-  for (let y = 0; y < MAP_HEIGHT; y++) {
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      const coord = `${x},${y}`;
-      if (x === px && y === py) {
-        html += '[<span style="color:#6cf;font-weight:bold;">X</span>]'; // Player position
-      } else if (shopMarkers[coord]) {
-        html += '[<span style="color:#fc6;font-weight:bold;">' + shopMarkers[coord] + '</span>]';
-      } else {
-        html += '[ ]';
-      }
-    }
-    html += '\n';
-  }
-  html += '</pre>';
-  // Add a legend
-  html += '<div style="font-size:0.95em;margin-top:6px;">Legend: <span style="color:#6cf;font-weight:bold;">X</span>=You, <span style="color:#fc6;font-weight:bold;">S</span>=Supply Shop, <span style="color:#fc6;font-weight:bold;">B</span>=Bank, <span style="color:#fc6;font-weight:bold;">G</span>=General Store, <span style="color:#fc6;font-weight:bold;">W</span>=Weapon Shop, <span style="color:#fc6;font-weight:bold;">$</span>=Other Shop</div>';
-  mapDiv.innerHTML = html;
 }
-
-function handleCommand() {
-  const input = document.getElementById("commandInput");
-  const cmd = input.value.trim().toLowerCase();
-  input.value = "";
-  if (!cmd) return;
-  processCommand(cmd);
-}
-
-function processCommand(cmd) {
-  // Check for spawn room first, then room, then overworld
-  let spawnRoom = window.spawnPoint && window.spawnPoint[gameState.location];
-  let room = !spawnRoom && window.roomDetails && window.roomDetails[gameState.location];
-  let isOverworld = !spawnRoom && !room && window.gameMap && window.gameMap[gameState.location];
-  if (!spawnRoom && !room && !isOverworld) {
-    setOutput("You are lost. Try 'exit' to return.");
-    return;
-  }
-
-  // Movement (works for spawn, room, and overworld)
-  if (["n","s","e","w","north","south","east","west","out","exit"].includes(cmd)) {
-    if (spawnRoom && spawnRoom.exits) {
-      let dir = cmd;
-      if (dir === "north") dir = "n";
-      if (dir === "south") dir = "s";
-      if (dir === "east") dir = "e";
-      if (dir === "west") dir = "w";
-      let exitKey = dir;
-      if (dir === "n") exitKey = "n";
-      if (dir === "s") exitKey = "s";
-      if (dir === "e") exitKey = "e";
-      if (dir === "w") exitKey = "w";
-      if (spawnRoom.exits[exitKey]) {
-        gameState.location = spawnRoom.exits[exitKey];
-        renderRoom();
-        renderStats();
-        renderInventory();
-        return;
-      } else if (spawnRoom.exits[cmd]) {
-        gameState.location = spawnRoom.exits[cmd];
-        renderRoom();
-        renderStats();
-        renderInventory();
-        return;
-      }
-      setOutput("You can't go that way.");
-      return;
-    } else if (room && room.exits) {
-      let dir = cmd;
-      if (dir === "north") dir = "n";
-      if (dir === "south") dir = "s";
-      if (dir === "east") dir = "e";
-      if (dir === "west") dir = "w";
-      let exitKey = dir;
-      if (dir === "n") exitKey = "north";
-      if (dir === "s") exitKey = "south";
-      if (dir === "e") exitKey = "east";
-      if (dir === "w") exitKey = "west";
-      if (room.exits[exitKey]) {
-        gameState.location = room.exits[exitKey];
-        renderRoom();
-        renderStats();
-        renderInventory();
-        return;
-      } else if (room.exits[cmd]) {
-        gameState.location = room.exits[cmd];
-        renderRoom();
-        renderStats();
-        renderInventory();
-        return;
-      }
-      setOutput("You can't go that way.");
-      return;
-    } else if (isOverworld) {
-      let [x, y] = gameState.location.split(",").map(Number);
-      if (cmd === "n" || cmd === "north") y--;
-      if (cmd === "s" || cmd === "south") y++;
-      if (cmd === "e" || cmd === "east") x++;
-      if (cmd === "w" || cmd === "west") x--;
-      const newLoc = `${x},${y}`;
-      if (window.gameMap[newLoc]) {
-        gameState.location = newLoc;
-        renderRoom();
-        renderStats();
-        renderInventory();
-        return;
-      } else {
-        setOutput("You can't go that way.");
-        return;
-      }
-    }
-  }
-
-  // Room-specific commands
-  if (room) {
-    // Take object
-    if (cmd.startsWith("take ")) {
-      const item = cmd.slice(5).trim();
-      if (room.objects && room.objects.includes(item)) {
-        gameState.inventory.push(item);
-        room.objects = room.objects.filter(o => o !== item);
-        setOutput(`You take the ${item}.`);
-        renderInventory();
-        renderRoom();
-        return;
-      } else {
-        setOutput("That item isn't here.");
-        return;
-      }
-    }
-    // Drop object
-    if (cmd.startsWith("drop ")) {
-      const item = cmd.slice(5).trim();
-      const idx = gameState.inventory.indexOf(item);
-      if (idx !== -1) {
-        gameState.inventory.splice(idx, 1);
-        if (!room.objects) room.objects = [];
-        room.objects.push(item);
-        setOutput(`You drop the ${item}.`);
-        renderInventory();
-        renderRoom();
-        return;
-      } else {
-        setOutput("You don't have that item.");
-        return;
-      }
-    }
-    // Examine item
-    if (cmd.startsWith("examine ")) {
-      const item = cmd.slice(8).trim();
-      if ((room.objects && room.objects.includes(item)) || gameState.inventory.includes(item)) {
-        setOutput(`You examine the ${item}. It's seen better days.`); // Placeholder
-        return;
-      } else {
-        setOutput("You don't see that item here or in your inventory.");
-        return;
-      }
-    }
-    // Talk to NPC
-    if (cmd.startsWith("talk to ")) {
-      const npc = cmd.slice(8).trim();
-      if (room.npcs && room.npcs.includes(npc)) {
-        setOutput(`${npc} says: 'Hello, survivor.'`); // Placeholder
-        return;
-      } else {
-        setOutput("That person isn't here.");
-        return;
-      }
-    }
-    // Shop interaction (if in shop)
-    if (room.name && room.name.toLowerCase().includes("shop") && cmd.startsWith("buy ")) {
-      const item = cmd.slice(4).trim();
-      if (gameState.stats.coins >= 5) {
-        gameState.stats.coins -= 5;
-        gameState.inventory.push(item);
-        setOutput(`You buy the ${item} for 5 coins.`);
-        renderStats();
-        renderInventory();
-        return;
-      } else {
-        setOutput("You don't have enough coins.");
-        return;
-      }
-    }
-  }
-
-  // Look
-  if (cmd === "look") {
-    renderRoom();
-    return;
-  }
-  // Inventory
-  if (cmd === "inventory" || cmd === "inv") {
-    setOutput("Inventory: " + (gameState.inventory.length ? gameState.inventory.join(", ") : "(empty)"), true);
-    return;
-  }
-  // Stats
-  if (cmd === "stats") {
-    setOutput("", true);
-    return;
-  }
-  // Help
-  if (cmd === "help") {
-    setOutput("Commands: n,s,e,w,look,take <item>,drop <item>,examine <item>,talk to <npc>,buy <item>,inventory,stats,save,load,help,exit", true);
-    return;
-  }
-  // Save
-  if (cmd === "save") {
-    saveGame();
-    return;
-  }
-  // Load
-  if (cmd === "load") {
-    loadGame();
-    return;
-  }
-  setOutput("Unknown command. Type 'help' for options.");
-}
-
-function showBackstory(callback) {
-  const input = document.getElementById("commandInput");
-  const execBtn = document.querySelector("button[onclick='handleCommand()']");
-  if (input) input.disabled = true;
-  if (execBtn) execBtn.disabled = true;
-  let i = 0;
-  function nextLine() {
-    if (i < backstoryLines.length) {
-      setOutput(backstoryLines[i]);
-      i++;
-      setTimeout(nextLine, 1500);
-    } else {
-      // Add a clear separator and blank lines for readability
-      setOutput("\n------------------------------\n");
-      setOutput("");
-      setOutput("");
-      if (input) input.disabled = false;
-      if (execBtn) execBtn.disabled = false;
-      if (callback) callback();
-    }
-  }
-  nextLine();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  // Force the starting location to 'spawn' every time the game loads
-  gameState.location = "spawn";
-  showBackstory(() => {
-    renderRoom();
-    renderStats();
-    renderInventory();
-  });
-});
