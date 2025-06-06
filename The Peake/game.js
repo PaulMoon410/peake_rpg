@@ -127,12 +127,23 @@ function renderMap() {
     if (townImg) townImg.style.display = 'block';
     if (marker) marker.style.display = 'block';
     // Use the global townCoordToPixel mapping
-    const coords = townCoordToPixel[gameState.location];
+    if (typeof window.townCoordToPixel === 'undefined') {
+      window.townCoordToPixel = {
+        '5,5': [50, 60],      // Town Center
+        '5,4': [50, 50],      // Blacksmith Forge
+        '5,6': [50, 70],      // Tavern
+        '4,5': [40, 60],      // General Store
+        '6,5': [60, 60],      // Guild Hall
+        // Add more as needed
+      };
+    }
+    const coords = window.townCoordToPixel[gameState.location];
     if (coords && townImg && marker) {
       const w = townImg.offsetWidth;
       const h = townImg.offsetHeight;
       marker.style.left = (coords[0] / 100 * w) + 'px';
       marker.style.top = (coords[1] / 100 * h) + 'px';
+      marker.style.display = 'block';
     } else if (marker) {
       marker.style.display = 'none';
     }
