@@ -118,15 +118,14 @@ function renderInventory() {
 
 function renderMap() {
   const mapDiv = document.getElementById("gameMapDisplay");
-  const townImg = document.getElementById("townMapImg");
-  const marker = document.getElementById("playerMarker");
   if (!mapDiv) return;
 
   // If in town (Cruar's Cove), show the image map and marker
+  const townImg = document.getElementById("townMapImg");
+  const marker = document.getElementById("playerMarker");
   if (window.townStart && window.townStart[gameState.location]) {
     if (townImg) townImg.style.display = 'block';
     if (marker) marker.style.display = 'block';
-    // Use the global townCoordToPixel mapping
     if (typeof window.townCoordToPixel === 'undefined') {
       window.townCoordToPixel = {
         '5,5': [50, 60],      // Town Center
@@ -153,7 +152,7 @@ function renderMap() {
     // Outside town: hide image and marker, show ASCII map
     if (townImg) townImg.style.display = 'none';
     if (marker) marker.style.display = 'none';
-    // Render ASCII map as before
+    // Render ASCII map
     let html = '<pre style="font-size:1em;line-height:1.2;">';
     const MAP_WIDTH = 10;
     const MAP_HEIGHT = 10;
