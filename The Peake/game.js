@@ -120,39 +120,60 @@ function renderMap() {
   const mapDiv = document.getElementById("gameMapDisplay");
   if (!mapDiv) return;
 
-  // If in town (Cruar's Cove), show the image map and marker
-  const townImg = document.getElementById("townMapImg");
-  const marker = document.getElementById("playerMarker");
+  // If in town (Cruar's Cove), show ASCII art map instead of image
   if (window.townStart && window.townStart[gameState.location]) {
-    if (townImg) townImg.style.display = 'block';
-    if (marker) marker.style.display = 'block';
-    if (typeof window.townCoordToPixel === 'undefined') {
-      window.townCoordToPixel = {
-        '5,5': [50, 60],      // Town Center
-        '5,4': [50, 50],      // Blacksmith Forge
-        '5,6': [50, 70],      // Tavern
-        '4,5': [40, 60],      // General Store
-        '6,5': [60, 60],      // Guild Hall
-        // Add more as needed
-      };
+    // Mapping of town coordinates to ASCII map labels
+    const asciiMapLabels = {
+      '0,0': '[Plaza]',
+      '0,-1': '[North Road]',
+      '0,-2': '[Blacksmith]',
+      '1,0': '[General]',
+      '-1,0': '[Tavern]',
+      '0,1': '[South Lane]',
+      '1,1': '[Apothecary]',
+      '-2,0': '[Mayor]',
+      '-1,1': '[Old Woman]',
+      '1,-1': '[Guard Post]',
+      '1,2': '[Park]',
+      '2,0': '[Guild Hall]',
+      '2,1': '[Upper Class]'
+    };
+    // Improved ASCII art map of Cruar's Cove, matching the PNG layout more closely
+    let asciiMap = `
+      _______________________________________________________
+     /                                                     \
+    |   ~ ~ ~ ~ ~ ~  The Harbor & Docks  ~ ~ ~ ~ ~ ~ ~ ~   |
+    |  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~   |
+    |------------------------------------------------------|
+    |  [Tavern]   [Plaza]   [Market]   [Blacksmith]        |
+    |     |         |          |            |               |
+    | [Old Woman] [Fountain] [General]  [North Road]       |
+    |     |         |          |            |               |
+    | [Mayor]   [South Lane] [Apothecary] [Guard Post]     |
+    |                                                     |
+    |----------------- The Village of Cruar's Cove --------|
+    |                                                     |
+    |  [Park]         [Guild Hall]         [Upper Class]   |
+    |_____________________________________________________|
+    `;
+    // Find player's location and highlight it on the map
+    const loc = gameState.location;
+    let highlightLabel = asciiMapLabels[loc];
+    if (highlightLabel) {
+      // Replace the label with a highlighted version (e.g., [*Plaza*])
+      const highlighted = highlightLabel.replace('[', '[*').replace(']', '*]');
+      // Use regex to replace only the first occurrence
+      asciiMap = asciiMap.replace(new RegExp(highlightLabel), highlighted);
     }
-    const coords = window.townCoordToPixel[gameState.location];
-    if (coords && townImg && marker) {
-      const w = townImg.offsetWidth;
-      const h = townImg.offsetHeight;
-      marker.style.left = (coords[0] / 100 * w) + 'px';
-      marker.style.top = (coords[1] / 100 * h) + 'px';
-      marker.style.display = 'block';
-    } else if (marker) {
-      marker.style.display = 'none';
-    }
-    // Hide ASCII map if present
-    if (mapDiv.querySelector('pre')) mapDiv.querySelector('pre').style.display = 'none';
-  } else {
-    // Outside town: hide image and marker, show ASCII map
+    let locName = window.townStart && window.townStart[loc]?.name || loc;
+    mapDiv.innerHTML = `<pre style="font-size:1em;line-height:1.2;">${asciiMap}\nYou are at: ${locName}</pre>`;
+    // Hide image and marker
+    const townImg = document.getElementById("townMapImg");
+    const marker = document.getElementById("playerMarker");
     if (townImg) townImg.style.display = 'none';
     if (marker) marker.style.display = 'none';
-    // Render ASCII map
+  } else {
+    // Outside town: show ASCII grid map
     let html = '<pre style="font-size:1em;line-height:1.2;">';
     const MAP_WIDTH = 10;
     const MAP_HEIGHT = 10;
@@ -169,5 +190,10 @@ function renderMap() {
     }
     html += '</pre>';
     mapDiv.innerHTML = html;
+    // Show image and marker as hidden
+    const townImg = document.getElementById("townMapImg");
+    const marker = document.getElementById("playerMarker");
+    if (townImg) townImg.style.display = 'none';
+    if (marker) marker.style.display = 'none';
   }
 }
