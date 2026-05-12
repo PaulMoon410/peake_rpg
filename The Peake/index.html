@@ -5,54 +5,231 @@
   <title>Peake RPG</title>
   <style>
     body { font-family: monospace; background: #111; color: #eee; padding: 20px; }
+    .gameLayout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+    .mainPanel { min-width: 0; }
     button { margin: 5px; }
     #console { white-space: pre-wrap; margin-bottom: 0; background:#222; padding:10px; height:200px; overflow-y:auto; border:1px solid #444; }
     #consoleInputWrapper { display: flex; background: #222; border: 1px solid #444; border-top: none; }
     #consoleInput { flex: 1; background: #222; color: #eee; border: none; padding: 10px; font-family: monospace; font-size: 1em; outline: none; }
     #consoleInputBtn { background: #333; color: #eee; border: none; padding: 10px 16px; cursor: pointer; font-family: monospace; }
     #consoleInputBtn:hover { background: #444; }
-    #mapContainer { margin-top: 20px; }
-    #gameMapDisplay { width: 100%; height: 400px; background: #222; border: 1px solid #444; }
+    #npcWindow {
+      background: #1a1a1a;
+      border: 4px solid #d8d0a8;
+      box-shadow: inset 0 0 0 2px #4a3f2a;
+      padding: 10px;
+      position: sticky;
+      top: 14px;
+    }
+    #npcWindow h3 {
+      margin: 0 0 8px 0;
+      color: #f6e9a7;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.95rem;
+    }
+    #npcPortrait {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border: 3px solid #9d8c60;
+      margin-bottom: 8px;
+      image-rendering: pixelated;
+      object-fit: cover;
+      background: linear-gradient(180deg, #3f5162 0%, #1c2634 100%);
+    }
+    #npcName {
+      color: #9cd9ff;
+      margin: 0 0 6px 0;
+      font-weight: bold;
+    }
+    #npcDialogueText {
+      min-height: 88px;
+      background: #0f0f0f;
+      border: 2px solid #4b4b4b;
+      padding: 8px;
+      line-height: 1.35;
+      color: #f2f2f2;
+      white-space: pre-wrap;
+    }
+    .cloudSavePanel {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #4a4a4a;
+      background: #1a1a1a;
+    }
+    .cloudSavePanel input {
+      display: block;
+      width: min(100%, 360px);
+      margin: 6px 0;
+      padding: 8px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      font-family: monospace;
+    }
+    .livePanel {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #4a4a4a;
+      background: #141414;
+    }
+    #livePlayers,
+    #liveChatLog {
+      margin-top: 8px;
+      padding: 8px;
+      background: #0f0f0f;
+      border: 1px solid #333;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    #liveChatInput {
+      width: min(100%, 360px);
+      margin-top: 8px;
+      padding: 8px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      font-family: monospace;
+    }
+    .debugPanel {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #6b6b6b;
+      background: #0d0d0d;
+    }
+    #debugTerminal {
+      margin-top: 8px;
+      background: #050505;
+      border: 1px solid #2a2a2a;
+      color: #a8ffb5;
+      font-size: 0.95rem;
+      line-height: 1.35;
+      min-height: 180px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 8px;
+      white-space: pre-wrap;
+    }
+    #debugTerminal .debug-line { display: block; }
+    #debugTerminal .debug-ok { color: #9cff9c; }
+    #debugTerminal .debug-warn { color: #ffd37a; }
+    #debugTerminal .debug-error { color: #ff8a8a; }
+    #debugTerminal .debug-info { color: #a8ffb5; }
+    #debugTerminal .debug-muted { color: #6f6f6f; }
+    #debugControls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    #debugControls button { margin: 0; }
+    @media (max-width: 900px) {
+      .gameLayout { grid-template-columns: 1fr; }
+      #npcWindow { position: static; }
+    }
   </style>
 </head>
 <body>
+  <div class="gameLayout">
+    <main class="mainPanel">
+      <h1>Peake RPG</h1>
+      <h3>Game Console</h3>
+      <div id="console"></div>
+      <div id="consoleInputWrapper">
+        <input type="text" id="consoleInput" placeholder="Type command (e.g., n, s, e, w, enter, exit)..." autocomplete="off">
+        <button id="consoleInputBtn">Execute</button>
+      </div>
 
-  <h1>Peake RPG</h1>
-  <h3>Game Console</h3>
-  <div id="console"></div>
-  <div id="consoleInputWrapper">
-    <input type="text" id="consoleInput" placeholder="Type command (e.g., n, s, e, w, enter, exit)..." autocomplete="off">
-    <button id="consoleInputBtn">Execute</button>
+      <h3>Character</h3>
+      <div id="stats"></div>
+
+      <h3>Inventory</h3>
+      <ul id="inventory"></ul>
+
+      <h3>Save / Load</h3>
+      <button onclick="saveGame()">Copy Save Code</button>
+      <button onclick="downloadSave()">Download Save</button>
+      <input type="text" id="loadInput" placeholder="Paste save code" style="width: 300px;">
+      <button onclick="loadGame()">Load</button>
+
+      <div class="cloudSavePanel">
+        <h3>Cloud Save</h3>
+        <input type="url" id="cloudApiBase" value="https://peakerpg-backend.onrender.com" placeholder="https://peakerpg-backend.onrender.com">
+        <input type="text" id="cloudUsername" placeholder="Cloud username" autocomplete="username">
+        <input type="password" id="cloudPassword" placeholder="Cloud password" autocomplete="current-password">
+        <button onclick="window.registerCloudAccount && window.registerCloudAccount()">Register</button>
+        <button onclick="window.loginCloudAccount && window.loginCloudAccount()">Login</button>
+        <button onclick="window.saveCloudGame && window.saveCloudGame()">Cloud Save</button>
+        <button onclick="window.loadCloudGame && window.loadCloudGame()">Cloud Load</button>
+        <div id="cloudSaveStatus" style="margin-top:8px;color:#9cff9c;white-space:pre-wrap;"></div>
+      </div>
+
+      <div class="livePanel">
+        <h3>Live World</h3>
+        <button onclick="window.connectLiveWorld && window.connectLiveWorld()">Join World</button>
+        <button onclick="window.disconnectLiveWorld && window.disconnectLiveWorld()">Leave World</button>
+        <div id="liveWorldStatus" style="margin-top:8px;color:#9cd9ff;white-space:pre-wrap;">Offline</div>
+        <div id="livePlayers">No players online.</div>
+        <div id="liveChatLog">World chat is empty.</div>
+        <input type="text" id="liveChatInput" placeholder="Type live chat and press Enter">
+        <button onclick="window.sendLiveChat && window.sendLiveChat()">Send Chat</button>
+      </div>
+
+      <div class="debugPanel">
+        <h3>Debug Terminal</h3>
+        <div id="debugStatus" style="margin-top:8px;color:#ffd37a;white-space:pre-wrap;">Checking backend...</div>
+        <div id="debugTerminal" aria-live="polite"></div>
+        <div id="debugControls">
+          <button onclick="window.runBackendHealthCheck && window.runBackendHealthCheck()">Ping Backend</button>
+          <button onclick="window.testLiveWorldConnection && window.testLiveWorldConnection()">Test Live World</button>
+          <button onclick="window.clearDebugTerminal && window.clearDebugTerminal()">Clear</button>
+        </div>
+      </div>
+
+      <div id="shop"></div>
+    </main>
+
+    <aside id="npcWindow" aria-live="polite">
+      <h3>Conversation</h3>
+      <img id="npcPortrait" alt="NPC portrait" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Crect width='320' height='200' fill='%23253341'/%3E%3Crect x='114' y='34' width='92' height='74' fill='%23cfc097'/%3E%3Crect x='96' y='118' width='128' height='52' fill='%236b7a94'/%3E%3Crect x='128' y='58' width='12' height='12' fill='%23171717'/%3E%3Crect x='180' y='58' width='12' height='12' fill='%23171717'/%3E%3Crect x='148' y='78' width='24' height='8' fill='%23583f36'/%3E%3C/svg%3E">
+      <p id="npcName">Narrator</p>
+      <div id="npcDialogueText">Walk up to someone and type: talk [name]</div>
+    </aside>
   </div>
-
-  <div id="mapContainer">
-    <h3>Town Map</h3>
-    <div id="gameMapDisplay" style="position:relative; width:100%; max-width:600px; height:auto; margin:auto;"></div>
-  </div>
-
-  <h3>Character</h3>
-  <div id="stats"></div>
-
-  <h3>Inventory</h3>
-  <ul id="inventory"></ul>
-
-  <h3>Save / Load</h3>
-  <button onclick="saveGame()">Copy Save Code</button>
-  <button onclick="downloadSave()">Download Save</button>
-  <input type="text" id="loadInput" placeholder="Paste save code" style="width: 300px;">
-  <button onclick="loadGame()">Load</button>
-
-  <div id="shop"></div>
 
 <!-- Load scripts in correct order with defer -->
-<script src="maps.js" defer></script>
-<script src="rooms/rooms.js" defer></script>
-<script src="characters.js" defer></script>
-<script src="shops/shop_items.js" defer></script>
-<script src="rooms/town_start.js" defer></script>
-<script src="shops/shop.js" defer></script>
-<script src="game.js" defer></script>
+<script src="maps.js?v=20260511b" defer></script>
+<script src="rooms/rooms.js?v=20260511b" defer></script>
+<script src="characters.js?v=20260511b" defer></script>
+<script src="shops/shop_items.js?v=20260511b" defer></script>
+<script src="rooms/town_start.js?v=20260511b" defer></script>
+<script src="shops/shop.js?v=20260511b" defer></script>
+<script src="game.js?v=20260511b" defer></script>
 <script>
+// If an older cached shop.js is served, this placeholder prevents repeated
+// dead CDN script injection and keeps the page usable.
+if (typeof window.hive_keychain === 'undefined') {
+  window.hive_keychain = {
+    requestTransfer: function () {
+      alert('Hive Keychain extension not detected. Install/enable the extension to buy items.');
+    }
+  };
+}
+
+window.npcPortraits = {
+  "town crier": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Crect width='320' height='200' fill='%232a3f5f'/%3E%3Crect x='114' y='32' width='92' height='78' fill='%23d7c39a'/%3E%3Crect x='86' y='116' width='148' height='56' fill='%238e3f2f'/%3E%3Crect x='126' y='58' width='12' height='12' fill='%23131313'/%3E%3Crect x='182' y='58' width='12' height='12' fill='%23131313'/%3E%3Crect x='148' y='82' width='24' height='8' fill='%235a4038'/%3E%3Crect x='64' y='60' width='46' height='14' fill='%23f4d35e'/%3E%3C/svg%3E",
+  "merchant": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Crect width='320' height='200' fill='%2334472f'/%3E%3Crect x='112' y='34' width='96' height='76' fill='%23d6bf95'/%3E%3Crect x='86' y='116' width='148' height='56' fill='%235f7c3a'/%3E%3Crect x='128' y='60' width='12' height='12' fill='%23151515'/%3E%3Crect x='180' y='60' width='12' height='12' fill='%23151515'/%3E%3Crect x='148' y='82' width='24' height='8' fill='%235b4238'/%3E%3Crect x='74' y='124' width='22' height='36' fill='%23ba8f2a'/%3E%3C/svg%3E",
+  "shopkeeper": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Crect width='320' height='200' fill='%233c2f2d'/%3E%3Crect x='112' y='34' width='96' height='76' fill='%23d9c5a0'/%3E%3Crect x='86' y='116' width='148' height='56' fill='%2360473f'/%3E%3Crect x='128' y='60' width='12' height='12' fill='%23161616'/%3E%3Crect x='180' y='60' width='12' height='12' fill='%23161616'/%3E%3Crect x='148' y='82' width='24' height='8' fill='%23573e35'/%3E%3Crect x='98' y='122' width='18' height='22' fill='%23d8a05f'/%3E%3C/svg%3E"
+};
+
+window.showNpcDialogue = function(name, dialogue) {
+  const npcNameEl = document.getElementById('npcName');
+  const npcTextEl = document.getElementById('npcDialogueText');
+  const npcPortraitEl = document.getElementById('npcPortrait');
+  if (!npcNameEl || !npcTextEl || !npcPortraitEl) return;
+
+  const key = String(name || 'Unknown').toLowerCase();
+  npcNameEl.textContent = name || 'Unknown';
+  npcTextEl.textContent = dialogue || '...';
+  npcPortraitEl.src = (window.npcPortraits && window.npcPortraits[key]) || npcPortraitEl.src;
+};
+
 // Attach the new console input to the game logic
 window.addEventListener('DOMContentLoaded', function() {
   var input = document.getElementById('consoleInput');
@@ -73,6 +250,12 @@ window.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Enter') handleConsoleInput();
   });
   btn.addEventListener('click', handleConsoleInput);
+  var liveChatInput = document.getElementById('liveChatInput');
+  if (liveChatInput) {
+    liveChatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && typeof sendLiveChat === 'function') sendLiveChat();
+    });
+  }
   // Focus input on load
   input.focus();
 });

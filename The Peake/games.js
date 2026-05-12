@@ -2,6 +2,27 @@ window.onload = function () {
   let player = window.createPlayer();
   let inRoom = null;
 
+  const npcDialogue = {
+    "town crier": "Hear ye! Rumors speak of shadows in the old woods.",
+    "merchant": "Fine goods and fair prices. Bring coin, leave happy.",
+    "child": "I saw shiny tracks by the fountain last night!",
+    "blacksmith": "Steel and fire never lie. Keep your blade oiled.",
+    "bartender": "You want the truth? Buy a drink first.",
+    "drunken sailor": "The tide whispers names... and mine is one of them.",
+    "shopkeeper": "Everything you need for the road, and some things you don't.",
+    "guild recruiter": "Take a contract and prove your worth.",
+    "grumpy vendor": "No refunds. No haggling. No nonsense.",
+    "silent watcher": "...",
+  };
+
+  function showNpcPanel(name) {
+    const key = String(name || "").toLowerCase();
+    const line = npcDialogue[key] || `${name} nods at you...`;
+    if (typeof window.showNpcDialogue === "function") {
+      window.showNpcDialogue(name, line);
+    }
+  }
+
   const map = window.gameMap;
   const rooms = window.roomDetails || {};
 
@@ -154,8 +175,17 @@ window.onload = function () {
         break;
 
       case "talk":
-        if (room?.npcs?.includes(target)) {
-          alert(`${target} nods at you...`);
+        if (!target) {
+          alert("Talk to who?");
+          break;
+        }
+        if (Array.isArray(room?.npcs)) {
+          const npcName = room.npcs.find((npc) => String(npc).toLowerCase() === target);
+          if (npcName) {
+            showNpcPanel(npcName);
+          } else {
+            alert("That person isn't here.");
+          }
         } else {
           alert("That person isn't here.");
         }

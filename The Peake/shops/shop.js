@@ -1,9 +1,21 @@
-// Load Hive Keychain directly from the index.html or here if needed
+// Hive Keychain is expected to be provided by the browser extension.
 if (typeof hive_keychain === "undefined") {
-  const script = document.createElement("script");
-  script.src = "https://cdn.jsdelivr.net/npm/hive-keychain/dist/hive-keychain.min.js";
-  document.head.appendChild(script);
+  console.warn("Hive Keychain extension not detected. Shop purchases are disabled until it is available.");
 }
+
+function normalizeShopItems(rawItems) {
+  if (Array.isArray(rawItems)) return rawItems;
+  if (!rawItems || typeof rawItems !== "object") return [];
+
+  // Support legacy object map: { "Health Potion": 10 }
+  return Object.entries(rawItems).map(([name, price]) => ({
+    name,
+    price: Number(price),
+    shop: "general"
+  }));
+}
+
+const shopItems = normalizeShopItems(window.shopItems);
 
 // Shop logic for Peake RPG
 // Uses shop_items.js for item definitions and prices
@@ -11,17 +23,22 @@ if (typeof hive_keychain === "undefined") {
 window.shopData = {
   general: {
     name: "General Store",
-    items: window.shopItems.filter(item => item.shop === "general")
+    items: shopItems.filter(item => item.shop === "general")
   },
   blacksmith: {
     name: "Blacksmith",
-    items: window.shopItems.filter(item => item.shop === "blacksmith")
+    items: shopItems.filter(item => item.shop === "blacksmith")
   },
   apothecary: {
     name: "Apothecary",
-    items: window.shopItems.filter(item => item.shop === "apothecary")
+    items: shopItems.filter(item => item.shop === "apothecary")
   }
 };
+
+if (!window.shopData.general.items.length && shopItems.length) {
+  // If items have no explicit shop assignment, keep everything in General Store.
+  window.shopData.general.items = shopItems;
+}
 
 // Get shop by type (e.g., 'general', 'blacksmith', 'apothecary')
 window.getShop = function(type) {
@@ -44,14 +61,14 @@ window.displayShop = function(username) {
   const container = document.getElementById("shop");
   container.innerHTML = "<h3>Welcome to the Shop (Prices in PEK)</h3>";
 
-  for (const item in window.shopItems) {
-    const cost = window.shopItems[item];
+  shopItems.forEach(({ name, price }) => {
+    const cost = Number(price);
     const btn = document.createElement("button");
-    btn.innerText = `Buy ${item} - ${cost} PEK`;
-    btn.onclick = () => buyItemWithKeychain(username, item, cost);
+    btn.innerText = `Buy ${name} - ${cost} PEK`;
+    btn.onclick = () => buyItemWithKeychain(username, name, cost);
     container.appendChild(btn);
     container.appendChild(document.createElement("br"));
-  }
+  });
 };
 
 function buyItemWithKeychain(username, itemName, itemCost) {
@@ -64,7 +81,7 @@ function buyItemWithKeychain(username, itemName, itemCost) {
   hive_keychain.requestTransfer(
     username,
     SHOP_ACCOUNT,
-    itemCost.toFixed(3),
+    Number(itemCost).toFixed(3),
     `Buy:${itemName}`,
     "PEK",
     (response) => {
